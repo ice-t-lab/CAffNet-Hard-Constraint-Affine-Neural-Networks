@@ -9,7 +9,7 @@ import torch
 from box import Box
 
 
-ConstraintMethod = Literal["CAffNet_FF", "CAffNet_TF", "HardNet"]
+ConstraintMethod = Literal["CAffNet-FF", "CAffNet-TF", "HardNet"]
 
 
 class BaseConstraint(ABC):
@@ -81,7 +81,7 @@ class BaseConstraint(ABC):
         caller already knows the method family. This dispatcher is useful in
         shared training/evaluation code.
         """
-        if method in ("CAffNet_FF", "CAffNet_TF"):
+        if method in ("CAffNet-FF", "CAffNet-TF"):
             return self.caffnet_coefficients(x)
         if method == "HardNet":
             return self.hardnet_coefficients(x)
