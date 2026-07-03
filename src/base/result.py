@@ -158,7 +158,7 @@ class BaseResult:
         if not terms:
             raise ValueError("Saved loss history has no plottable loss columns.")
 
-        cfg = self.cfg.visualization.loss
+        cfg = self.cfg.visualization.loss_history
         fig, axs = plt.subplots(
             len(terms),
             1,
