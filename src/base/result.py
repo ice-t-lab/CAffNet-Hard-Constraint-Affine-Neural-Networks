@@ -317,7 +317,7 @@ class BaseResult:
         return df
 
 
-def combineDfs(df_list: list[pd.DataFrame], methods_list: list[str]) -> str:
+def combineDfs(df_list: list[pd.DataFrame], methods_list: list[str]) -> pd.DataFrame:
     df_all = pd.concat(df_list, ignore_index=True)
 
     num_cols = [c for c in df_all.columns if c != ("Method", "")]
