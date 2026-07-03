@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import random
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -49,6 +50,8 @@ class BaseMain(ABC):
 
     def run(self, methods: list[str] | None = None) -> BaseResult:
         """Run methods and build saved result artifacts."""
+        self.setup_logging()
+        self.logger.info("Using device: %s", self.device)
         self.setup()
         run_methods = methods or self.methods
         completed_methods = [self.run_method(method) for method in run_methods]
@@ -57,6 +60,7 @@ class BaseMain(ABC):
 
     def setup(self) -> None:
         """Build shared scenario objects."""
+        self.seed_everything()
         self.system = self.build_system()
         self.constraint = self.build_constraint()
         self.visualization = self.build_visualization()
@@ -70,6 +74,7 @@ class BaseMain(ABC):
         """Train, evaluate, and save one method."""
         self.logger.info("Method: %s", method)
 
+        self.seed_everything()
         net = self.build_net(method)
         method = net.name
         simulation = self.build_simulation(net)
@@ -87,7 +92,7 @@ class BaseMain(ABC):
             self.save_optimizer(method, simulation)
 
         metrics, result_data = self.evaluate(simulation)
-        metrics["Train Time (s)"] = train_time
+        metrics["Train Time (s)"] = train_time / self.cfg.simulation.training.n_epochs
 
         self.result.save(
             method=method,
@@ -194,7 +199,13 @@ class BaseMain(ABC):
     def save_model(self, method: str, simulation: BaseSimulation) -> None:
         """Save network state dict inside the method folder."""
         self.result.method_dir(method).mkdir(parents=True, exist_ok=True)
-        torch.save(simulation.net.state_dict(), self.model_path(method))
+        model_path = self.model_path(method)
+        torch.save(simulation.net.state_dict(), model_path)
+        self.logger.info(
+            "Saved model weights at epoch %d to %s",
+            self.cfg.simulation.training.n_epochs,
+            model_path,
+        )
 
     def save_optimizer(self, method: str, simulation: BaseSimulation) -> None:
         """Save optimizer state dict inside the method folder."""
@@ -231,3 +242,38 @@ class BaseMain(ABC):
     @staticmethod
     def num_params(net: nn.Module) -> str:
         return f"{sum(p.numel() for p in net.parameters()):,}"
+
+    def seed_everything(self) -> None:
+        """Seed Python, NumPy, and torch."""
+        import numpy as np
+
+        seed = self.cfg.simulation.seed
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+
+    def setup_logging(self) -> None:
+        """Configure rebuttal-style console and file logging."""
+        result_dir = Path(self.cfg.result_dir)
+        result_dir.mkdir(parents=True, exist_ok=True)
+        formatter = logging.Formatter(
+            "[%(asctime)s][%(levelname)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
+        root = logging.getLogger()
+        root.setLevel(logging.INFO)
+        for handler in root.handlers[:]:
+            root.removeHandler(handler)
+            handler.close()
+
+        console = logging.StreamHandler()
+        console.setFormatter(formatter)
+        root.addHandler(console)
+
+        file_handler = logging.FileHandler(result_dir / "log.txt")
+        file_handler.setFormatter(formatter)
+        root.addHandler(file_handler)
