@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 import torch
 from box import Box
+
+if TYPE_CHECKING:
+    from .constraint import BaseConstraint
 
 
 class BaseSystem(ABC):
@@ -79,3 +83,28 @@ class BaseSystem(ABC):
         """Generate evaluation targets from ``x_eval``."""
         self.logger.debug("Generating evaluation targets.")
         return self.f(self.x_eval)
+
+    def constraint_residual(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        constraint: BaseConstraint | None,
+        net_name: str,
+    ) -> torch.Tensor | None:
+        """Return positive residuals for affine constraints."""
+        if constraint is None:
+            return None
+
+        if net_name == "HardNet":
+            a, bl, bu = constraint.hardnet_coefficients(x)
+            ay = torch.bmm(a.to(y.device), y)
+            return torch.cat(
+                [
+                    torch.relu(bl.to(y.device) - ay),
+                    torch.relu(ay - bu.to(y.device)),
+                ],
+                dim=1,
+            )
+
+        a, b = constraint.caffnet_coefficients(x)
+        return torch.relu(torch.bmm(a.to(y.device), y) - b.to(y.device))
