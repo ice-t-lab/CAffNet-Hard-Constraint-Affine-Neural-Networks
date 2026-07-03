@@ -30,6 +30,8 @@ class BaseSystem(ABC):
         # any constants needed by _generate_x before calling super().__init__().
         self.x_train = self.generate_x_train()
         self.x_eval = self.generate_x_eval()
+        self.y_train = self.generate_y_train()
+        self.y_eval = self.generate_y_eval()
 
         self.logger.debug(
             "Initialized %s with x_dim=%s, y_dim=%s",
@@ -42,8 +44,8 @@ class BaseSystem(ABC):
     def f(self, x: torch.Tensor) -> torch.Tensor:
         """Return the target output for ``x``.
 
-        Supervised scenarios can use this to generate labels. Optimization and
-        control scenarios may leave target generation to their simulation code.
+        Subclasses with nonstandard labels can override ``generate_y_train``
+        and ``generate_y_eval`` instead of using this default target mapping.
         """
         raise NotImplementedError
 
@@ -67,3 +69,13 @@ class BaseSystem(ABC):
         n_eval = self.cfg.simulation.data.n_eval
         self.logger.debug("Generating %s evaluation samples.", n_eval)
         return self._generate_x(n_eval)
+
+    def generate_y_train(self) -> torch.Tensor:
+        """Generate training targets from ``x_train``."""
+        self.logger.debug("Generating training targets.")
+        return self.f(self.x_train)
+
+    def generate_y_eval(self) -> torch.Tensor:
+        """Generate evaluation targets from ``x_eval``."""
+        self.logger.debug("Generating evaluation targets.")
+        return self.f(self.x_eval)
