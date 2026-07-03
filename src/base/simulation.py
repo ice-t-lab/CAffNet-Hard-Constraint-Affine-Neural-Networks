@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Literal
 
 import torch
@@ -47,12 +48,19 @@ class BaseSimulation:
         """Train the network."""
         train_data = self.get_data("train") if data is None else data
         n_epochs = self.cfg.simulation.training.n_epochs
+        self.logger.info(
+            "Training for %d epoch(s); completed before this run: 0; "
+            "target completed epoch: %d.",
+            n_epochs,
+            n_epochs,
+        )
 
         for epoch in range(1, n_epochs + 1):
             self.net.train()
             totals: Metrics = {}
             n_batches = 0
             batch_size = self.cfg.simulation.training.batch_size
+            epoch_start = time.perf_counter()
 
             for batch in self.iter_batches(train_data, batch_size, shuffle=True):
                 self.optimizer.zero_grad()
@@ -65,15 +73,12 @@ class BaseSimulation:
 
             terms = self.average(totals, n_batches)
             self.loss_history.append({"epoch": float(epoch), **terms})
+            epoch_time = time.perf_counter() - epoch_start
 
+            if epoch == 1:
+                self.logger.info(self.log_header())
             if self.should_log(epoch, n_epochs):
-                self.logger.info(
-                    "%s epoch %s/%s: %s",
-                    self.net.name,
-                    epoch,
-                    n_epochs,
-                    self.format_terms(terms),
-                )
+                self.logger.info(self.log_row(epoch, n_epochs, terms, epoch_time))
 
     def evaluate(self, data: Batch | None = None) -> Metrics:
         """Evaluate the network."""
@@ -186,3 +191,68 @@ class BaseSimulation:
     def format_terms(terms: Metrics) -> str:
         """Format terms for logging."""
         return ", ".join(f"{key}={value:.6g}" for key, value in terms.items())
+
+    def log_header(self) -> str:
+        """Return rebuttal-style training table header."""
+        W = self.log_widths()
+        return (
+            f"[{'Epoch':^{W['epoch']}}]"
+            f"[{'LR':^{W['lr']}}]"
+            f"[{'Train Loss':^{W['loss']}}]"
+            f"[{'Main Loss':^{W['main']}}]"
+            f"[{'Cons. Viol.':^{W['cv']}}]"
+            f"[{'Time/Epoch':^{W['time']}}]"
+            f"[{'Total Time':^{W['total']}}]"
+            f"[{'Remaining':^{W['remain']}}]"
+        )
+
+    def log_row(
+        self,
+        epoch: int,
+        n_epochs: int,
+        terms: Metrics,
+        epoch_time: float,
+    ) -> str:
+        """Return rebuttal-style training table row."""
+        W = self.log_widths()
+        return (
+            f"[{f'{epoch}/{n_epochs}':^{W['epoch']}}]"
+            f"[{self.format_learning_rate():^{W['lr']}}]"
+            f"[{terms['total_loss']:^{W['loss']}.4e}]"
+            f"[{terms['main_loss']:^{W['main']}.4e}]"
+            f"[{terms['constraint_violation_loss']:^{W['cv']}.4e}]"
+            f"[{f'{epoch_time:.2f}s':^{W['time']}}]"
+            f"[{self.format_hms(epoch_time * n_epochs):^{W['total']}}]"
+            f"[{self.format_hms(epoch_time * (n_epochs - epoch)):^{W['remain']}}]"
+        )
+
+    def format_learning_rate(self) -> str:
+        """Return optimizer learning rate string."""
+        lrs = [float(group["lr"]) for group in self.optimizer.param_groups]
+        if not lrs:
+            return "n/a"
+        if len(set(lrs)) == 1:
+            return f"{lrs[0]:.4e}"
+        return ",".join(f"{lr:.2e}" for lr in lrs)
+
+    @staticmethod
+    def log_widths() -> dict[str, int]:
+        """Return fixed widths used by the rebuttal log table."""
+        return {
+            "epoch": 15,
+            "lr": 15,
+            "loss": 15,
+            "main": 15,
+            "cv": 15,
+            "time": 15,
+            "total": 15,
+            "remain": 15,
+        }
+
+    @staticmethod
+    def format_hms(seconds: float) -> str:
+        """Format seconds as ``00h00m00s``."""
+        seconds = int(round(seconds))
+        hours, remainder = divmod(seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours:02d}h{minutes:02d}m{seconds:02d}s"
