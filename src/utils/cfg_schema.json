@@ -405,7 +405,7 @@
           },
           "additionalProperties": true
         },
-        "loss": {
+        "loss_history": {
           "type": "object",
           "properties": {
             "figsize": {
