@@ -118,17 +118,20 @@ class BaseMain(ABC):
     def save_results(self, methods: list[str]) -> None:
         """Build combined result outputs from saved method data."""
         if self.cfg.simulation.save.metrics:
-            self.result.table(methods)
-            self.result.latex_table(methods)
+            metric_methods = self.saved_methods(methods, self.result.metric_methods())
+            self.result.table(metric_methods)
+            self.result.latex_table(metric_methods)
 
         if self.cfg.simulation.save.figures and "result" in self.cfg.visualization:
-            self.result.plot_results(methods)
+            result_methods = self.saved_methods(methods, self.result.result_methods())
+            self.result.plot_results(result_methods)
         if (
             self.cfg.simulation.save.figures
             and self.cfg.simulation.save.loss_history
             and "loss_history" in self.cfg.visualization
         ):
-            self.result.plot_loss(methods)
+            loss_methods = self.saved_methods(methods, self.result.loss_methods())
+            self.result.plot_loss(loss_methods)
 
     def save_common_data(self) -> None:
         """Save data shared by all methods."""
@@ -208,6 +211,23 @@ class BaseMain(ABC):
         if self.constraint is None:
             raise ValueError(f"{method} requires a constraint.")
         return self.constraint
+
+    def saved_methods(
+        self,
+        completed_methods: list[str],
+        existing_methods: list[str],
+    ) -> list[str]:
+        """Return result methods, including prior single-method runs."""
+        if len(completed_methods) != 1:
+            return completed_methods
+
+        available = set(existing_methods)
+        if not available:
+            return completed_methods
+
+        ordered = [method for method in self.default_methods if method in available]
+        ordered.extend(sorted(available.difference(ordered)))
+        return ordered
 
     @staticmethod
     def num_params(net: nn.Module) -> str:
