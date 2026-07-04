@@ -9,7 +9,6 @@ import random
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 
 import torch
 from box import Box
@@ -114,23 +113,7 @@ class BaseMain(ABC):
         simulation: BaseSimulation,
     ) -> tuple[Metrics, ResultData]:
         """Evaluate once and return saved metrics plus plotting data."""
-        data = simulation.get_data("eval")
-        batch = {key: value.to(simulation.device) for key, value in data.items()}
-
-        simulation.net.eval()
-        with torch.no_grad():
-            test_start = time.perf_counter()
-            y_pred = simulation.net(batch["x"])
-            test_time = time.perf_counter() - test_start
-            terms = simulation.loss(batch, y_pred)
-
-        metrics = self.metrics_from_terms(terms)
-        metrics["Test Time (s)"] = test_time
-        result_data = {
-            "x": batch["x"].detach().cpu(),
-            "y": y_pred.detach().cpu(),
-        }
-        return metrics, result_data
+        return simulation.evaluate()
 
     def save_results(self, methods: list[str]) -> None:
         """Build combined result outputs from saved method data."""
@@ -227,24 +210,26 @@ class BaseMain(ABC):
         return self.constraint
 
     @staticmethod
-    def metrics_from_terms(terms: dict[str, torch.Tensor]) -> Metrics:
-        """Convert scalar tensor loss terms to saved metrics."""
-        return {
-            key: BaseMain.to_scalar(value)
-            for key, value in terms.items()
-        }
-
-    @staticmethod
-    def to_scalar(value: Any) -> Any:
-        if isinstance(value, torch.Tensor):
-            value = value.detach().cpu()
-            if value.numel() == 1:
-                return value.item()
-        return value
-
-    @staticmethod
     def num_params(net: nn.Module) -> str:
         return f"{sum(p.numel() for p in net.parameters()):,}"
+
+    @staticmethod
+    def load_cfg(
+        cfg_path: str | Path,
+        dir_name: str,
+        seed: int | None = None,
+    ) -> Box:
+        """Load a scenario config and fill the standard result directory."""
+        cfg = Config().load(cfg_path)
+        if seed is not None:
+            cfg.simulation.seed = seed
+        cfg.result_dir = str(
+            Path("results")
+            / str(cfg.scenario.id)
+            / dir_name
+            / f"seed_{cfg.simulation.seed}"
+        )
+        return cfg
 
     def seed_everything(self) -> None:
         """Seed Python, NumPy, and torch."""

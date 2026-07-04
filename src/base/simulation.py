@@ -20,6 +20,7 @@ from .system import BaseSystem
 Batch = dict[str, torch.Tensor]
 LossTerms = dict[str, torch.Tensor]
 Metrics = dict[str, float]
+ResultData = dict[str, torch.Tensor]
 
 
 class BaseSimulation:
@@ -87,23 +88,22 @@ class BaseSimulation:
             if self.should_log(epoch, n_epochs):
                 self.logger.info(self.log_row(epoch, n_epochs, terms, epoch_time))
 
-    def evaluate(self, data: Batch | None = None) -> Metrics:
-        """Evaluate the network."""
+    def evaluate(self, data: Batch | None = None) -> tuple[Metrics, ResultData]:
+        """Evaluate the network and return metrics plus plot data."""
         eval_data = self.get_data("eval") if data is None else data
+        batch = {key: value.to(self.device) for key, value in eval_data.items()}
         self.net.eval()
 
-        totals: Metrics = {}
-        n_batches = 0
-        batch_size = self.cfg.simulation.training.batch_size
-
         with torch.no_grad():
-            for batch in self.iter_batches(eval_data, batch_size, shuffle=False):
-                terms = self.simulate(batch)
+            test_start = time.perf_counter()
+            y_pred = self.predict(batch)
+            test_time = time.perf_counter() - test_start
+            terms = self.loss(batch, y_pred)
 
-                n_batches += 1
-                self.accumulate(totals, terms)
-
-        return self.average(totals, n_batches)
+        return (
+            self.evaluation_metrics(batch, y_pred, terms, test_time),
+            self.result_data(batch, y_pred),
+        )
 
     def before_train(self) -> None:
         """Hook for scenario-specific setup immediately before training."""
@@ -121,8 +121,12 @@ class BaseSimulation:
         Subclasses can override this for rollout-based systems, such as CBF
         robotic simulations that need multiple system steps per training batch.
         """
-        y_pred = self.net(batch["x"])
+        y_pred = self.predict(batch)
         return self.loss(batch, y_pred)
+
+    def predict(self, batch: Batch) -> torch.Tensor:
+        """Return model output for a batch."""
+        return self.net(batch["x"])
 
     def loss(
         self,
@@ -159,6 +163,29 @@ class BaseSimulation:
         if residual is None:
             return y_pred.new_zeros(())
         return residual.square().mean()
+
+    def evaluation_metrics(
+        self,
+        batch: Batch,
+        y_pred: torch.Tensor,
+        terms: LossTerms,
+        test_time: float,
+    ) -> Metrics:
+        """Return metrics saved after evaluation."""
+        metrics = {key: self.to_scalar(value) for key, value in terms.items()}
+        metrics["Test Time (s)"] = test_time
+        return metrics
+
+    def result_data(
+        self,
+        batch: Batch,
+        y_pred: torch.Tensor,
+    ) -> ResultData:
+        """Return tensors saved for plotting."""
+        return {
+            "x": batch["x"].detach().cpu(),
+            "y": y_pred.detach().cpu(),
+        }
 
     def iter_batches(
         self,
@@ -208,6 +235,13 @@ class BaseSimulation:
         """Accumulate scalar tensor terms."""
         for key, value in terms.items():
             totals[key] = totals.get(key, 0.0) + float(value.detach().item())
+
+    @staticmethod
+    def to_scalar(value: torch.Tensor | float) -> float:
+        """Convert a scalar tensor or numeric value to float."""
+        if isinstance(value, torch.Tensor):
+            return float(value.detach().cpu().item())
+        return float(value)
 
     @staticmethod
     def average(totals: Metrics, n_batches: int) -> Metrics:
