@@ -173,15 +173,15 @@ class BaseNet(nn.Module):
     def init_weights(self, module: nn.Module) -> None:
         """Initialize layers with Xavier initialization."""
         if isinstance(module, nn.Linear):
-            self.init_linear(module)
+            self.init_linear(module, zero_bias=True)
         elif isinstance(module, nn.MultiheadAttention):
             self.init_attention(module)
 
-    def init_linear(self, layer: nn.Linear) -> None:
+    def init_linear(self, layer: nn.Linear, zero_bias: bool = False) -> None:
         """Initialize a linear layer."""
         nn.init.xavier_normal_(layer.weight)
 
-        if layer.bias is not None:
+        if zero_bias and layer.bias is not None:
             nn.init.zeros_(layer.bias)
 
     def init_attention(self, layer: nn.MultiheadAttention) -> None:

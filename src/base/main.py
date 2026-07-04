@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import platform
 import random
 import time
 from abc import ABC, abstractmethod
@@ -51,6 +53,7 @@ class BaseMain(ABC):
     def run(self, methods: list[str] | None = None) -> BaseResult:
         """Run methods and build saved result artifacts."""
         self.setup_logging()
+        self.log_hardware_info()
         self.logger.info("Using device: %s", self.device)
         self.setup()
         run_methods = methods or self.methods
@@ -254,6 +257,12 @@ class BaseMain(ABC):
         if torch.cuda.is_available():
             torch.cuda.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+        try:
+            torch.use_deterministic_algorithms(True, warn_only=True)
+        except TypeError:
+            torch.use_deterministic_algorithms(True)
 
     def setup_logging(self) -> None:
         """Configure rebuttal-style console and file logging."""
@@ -277,3 +286,23 @@ class BaseMain(ABC):
         file_handler = logging.FileHandler(result_dir / "log.txt")
         file_handler.setFormatter(formatter)
         root.addHandler(file_handler)
+
+    def log_hardware_info(self) -> None:
+        """Log runtime hardware in the rebuttal style."""
+        self.logger.info("Host: %s", platform.node())
+        self.logger.info("OS: %s", platform.platform())
+        self.logger.info("CPU cores: %s", os.cpu_count())
+        self.logger.info(
+            "CUDA available: %s (devices=%d)",
+            torch.cuda.is_available(),
+            torch.cuda.device_count(),
+        )
+        for index in range(torch.cuda.device_count()):
+            props = torch.cuda.get_device_properties(index)
+            self.logger.info(
+                "  GPU %d: %s, capability=%s, vram=%.1f GB",
+                index,
+                props.name,
+                (props.major, props.minor),
+                props.total_memory / 1024**3,
+            )

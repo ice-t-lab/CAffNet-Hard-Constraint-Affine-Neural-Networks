@@ -46,8 +46,17 @@ class BaseSimulation:
 
     def train(self, data: Batch | None = None) -> None:
         """Train the network."""
+        self.before_train()
         train_data = self.get_data("train") if data is None else data
         n_epochs = self.cfg.simulation.training.n_epochs
+        batch_size = self.cfg.simulation.training.batch_size
+        train_keys, train_dataloader = self.build_dataloader(
+            train_data,
+            batch_size,
+            shuffle=True,
+        )
+        self.net.to(self.device)
+        self.net.train()
         self.logger.info(
             "Training for %d epoch(s); completed before this run: 0; "
             "target completed epoch: %d.",
@@ -56,16 +65,14 @@ class BaseSimulation:
         )
 
         for epoch in range(1, n_epochs + 1):
-            self.net.train()
             totals: Metrics = {}
             n_batches = 0
-            batch_size = self.cfg.simulation.training.batch_size
             epoch_start = time.perf_counter()
 
-            for batch in self.iter_batches(train_data, batch_size, shuffle=True):
+            for batch in self.iter_dataloader(train_keys, train_dataloader):
                 self.optimizer.zero_grad()
                 terms = self.simulate(batch)
-                terms["total_loss"].backward()
+                terms["total_loss"].backward(retain_graph=False)
                 self.optimizer.step()
 
                 n_batches += 1
@@ -97,6 +104,10 @@ class BaseSimulation:
                 self.accumulate(totals, terms)
 
         return self.average(totals, n_batches)
+
+    def before_train(self) -> None:
+        """Hook for scenario-specific setup immediately before training."""
+        return None
 
     def get_data(self, split: Literal["train", "eval"]) -> Batch:
         """Return unified x/y data for train or eval."""
@@ -155,7 +166,17 @@ class BaseSimulation:
         batch_size: int,
         shuffle: bool,
     ):
-        """Yield mini-batches using the same DataLoader path as rebuttal."""
+        """Yield mini-batches."""
+        keys, dataloader = self.build_dataloader(data, batch_size, shuffle)
+        yield from self.iter_dataloader(keys, dataloader)
+
+    def build_dataloader(
+        self,
+        data: Batch,
+        batch_size: int,
+        shuffle: bool,
+    ) -> tuple[list[str], DataLoader]:
+        """Build a TensorDataset/DataLoader pair."""
         n_samples = len(data["x"])
         if batch_size <= 0:
             batch_size = n_samples
@@ -163,6 +184,14 @@ class BaseSimulation:
         keys = list(data)
         dataset = TensorDataset(*(data[key] for key in keys))
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+        return keys, dataloader
+
+    def iter_dataloader(
+        self,
+        keys: list[str],
+        dataloader: DataLoader,
+    ):
+        """Yield dict batches from an existing DataLoader."""
         for tensors in dataloader:
             yield {
                 key: tensor.to(self.device)
