@@ -32,8 +32,13 @@ class CAffNet(BaseNet):
             architecture=architecture,
         )
         self.constraint = constraint
-        self.f_network = self.build_network()
-        self.w_network = self.build_network()
+        if self.architecture == "tf":
+            self.input_network = self.build_transformer_input()
+            self.f_network = self.build_transformer_head()
+            self.w_network = self.build_transformer_head()
+        else:
+            self.f_network = self.build_network()
+            self.w_network = self.build_network()
 
     def apply_projection(
         self,
@@ -51,8 +56,13 @@ class CAffNet(BaseNet):
         f_nom: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Return ``[N, y_dim, 1]`` constrained network output."""
-        y = self.forward_branch(self.f_network, x)
-        w = self.forward_branch(self.w_network, x)
+        if self.architecture == "tf":
+            h = self.input_network(x.squeeze(-1)).unsqueeze(1)
+            y = self.f_network(h).unsqueeze(-1)
+            w = self.w_network(h).unsqueeze(-1)
+        else:
+            y = self.forward_branch(self.f_network, x)
+            w = self.forward_branch(self.w_network, x)
 
         if f_nom is not None:
             y = y + f_nom
