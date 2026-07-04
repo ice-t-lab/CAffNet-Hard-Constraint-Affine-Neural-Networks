@@ -120,6 +120,7 @@ class BaseResult:
         self,
         methods: list[str] | None = None,
         filename: str = "result.png",
+        output_dir: str | Path | None = None,
         show_plot: bool = False,
     ) -> tuple[plt.Figure, plt.Axes]:
         """Plot saved method results on the problem figure."""
@@ -132,7 +133,9 @@ class BaseResult:
             data = self.load_result_data(method)
             fig, ax = self.plot_result_data(fig, ax, method, data)
 
-        fig.savefig(self.result_dir / filename)
+        save_dir = self.result_dir if output_dir is None else Path(output_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_dir / filename)
         if show_plot:
             plt.show()
         return fig, ax
@@ -141,6 +144,7 @@ class BaseResult:
         self,
         methods: list[str] | None = None,
         filename: str = "loss.png",
+        output_dir: str | Path | None = None,
         show_plot: bool = False,
     ) -> tuple[plt.Figure, list[plt.Axes]]:
         """Plot saved loss histories."""
@@ -198,7 +202,9 @@ class BaseResult:
         axs[-1].set_xlabel("epoch")
 
         plt.tight_layout()
-        fig.savefig(self.result_dir / filename)
+        save_dir = self.result_dir if output_dir is None else Path(output_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_dir / filename)
         if show_plot:
             plt.show()
         return fig, axs

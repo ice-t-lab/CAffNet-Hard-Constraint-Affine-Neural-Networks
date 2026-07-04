@@ -87,33 +87,6 @@ class TransformerRegressor(nn.Module):
         return self.output(h)
 
 
-class TransformerHead(nn.Module):
-    """Transformer branch after a shared input projection."""
-
-    def __init__(
-        self,
-        output_dim: int,
-        d_model: int,
-        num_heads: int,
-        activation: str = "relu",
-        dropout: float = 0.0,
-    ) -> None:
-        super().__init__()
-        self.transformer = TransformerBlock(
-            d_model=d_model,
-            num_heads=num_heads,
-            dim_feedforward=d_model,
-            activation=activation,
-            dropout=dropout,
-        )
-        self.output = nn.Linear(d_model, output_dim)
-
-    def forward(self, h: torch.Tensor) -> torch.Tensor:
-        """Return ``[N, output_dim]`` from encoded token input."""
-        h = self.transformer(h).squeeze(1)
-        return self.output(h)
-
-
 class BaseNet(nn.Module):
     """Common network-building helpers for all methods."""
 
@@ -173,25 +146,6 @@ class BaseNet(nn.Module):
         output_dim = output_dim or self.y_dim
         net = TransformerRegressor(
             input_dim=self.x_dim,
-            output_dim=output_dim,
-            d_model=int(self.cfg.net.tf.d_model),
-            num_heads=int(self.cfg.net.tf.num_heads),
-            activation=self.cfg.net.tf.activation,
-            dropout=float(getattr(self.cfg.net.tf, "dropout", 0.0)),
-        )
-        self.init_module(net)
-        return net
-
-    def build_transformer_input(self) -> nn.Linear:
-        """Build a shared transformer input projection."""
-        layer = nn.Linear(self.x_dim, int(self.cfg.net.tf.d_model))
-        self.init_linear(layer, zero_bias=True)
-        return layer
-
-    def build_transformer_head(self, output_dim: int | None = None) -> TransformerHead:
-        """Build a transformer head after a shared input projection."""
-        output_dim = output_dim or self.y_dim
-        net = TransformerHead(
             output_dim=output_dim,
             d_model=int(self.cfg.net.tf.d_model),
             num_heads=int(self.cfg.net.tf.num_heads),

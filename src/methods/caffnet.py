@@ -6,9 +6,10 @@ from typing import Literal
 
 import torch
 from box import Box
+from torch import nn
 
 from src.base.constraint import BaseConstraint
-from src.base.net import BaseNet
+from src.base.net import BaseNet, TransformerBlock
 from src.utils.CAffine import caffine_project
 
 
@@ -33,12 +34,31 @@ class CAffNet(BaseNet):
         )
         self.constraint = constraint
         if self.architecture == "tf":
-            self.input_network = self.build_transformer_input()
-            self.f_network = self.build_transformer_head()
-            self.w_network = self.build_transformer_head()
+            self.build_transformer_networks()
         else:
             self.f_network = self.build_network()
             self.w_network = self.build_network()
+
+    def build_transformer_networks(self) -> None:
+        hidden = int(self.cfg.net.tf.d_model)
+        self.input_network = nn.Linear(self.x_dim, hidden)
+        self.transformer_f = TransformerBlock(
+            d_model=hidden,
+            num_heads=int(self.cfg.net.tf.num_heads),
+            dim_feedforward=hidden,
+            activation=self.cfg.net.tf.activation,
+            dropout=float(getattr(self.cfg.net.tf, "dropout", 0.0)),
+        )
+        self.transformer_w = TransformerBlock(
+            d_model=hidden,
+            num_heads=int(self.cfg.net.tf.num_heads),
+            dim_feedforward=hidden,
+            activation=self.cfg.net.tf.activation,
+            dropout=float(getattr(self.cfg.net.tf, "dropout", 0.0)),
+        )
+        self.output_f = nn.Linear(hidden, self.y_dim)
+        self.output_w = nn.Linear(hidden, self.y_dim)
+        self.apply(self.init_weights)
 
     def apply_projection(
         self,
@@ -58,8 +78,8 @@ class CAffNet(BaseNet):
         """Return ``[N, y_dim, 1]`` constrained network output."""
         if self.architecture == "tf":
             h = self.input_network(x.squeeze(-1)).unsqueeze(1)
-            y = self.f_network(h).unsqueeze(-1)
-            w = self.w_network(h).unsqueeze(-1)
+            y = self.output_f(self.transformer_f(h).squeeze(1)).unsqueeze(-1)
+            w = self.output_w(self.transformer_w(h).squeeze(1)).unsqueeze(-1)
         else:
             y = self.forward_branch(self.f_network, x)
             w = self.forward_branch(self.w_network, x)
