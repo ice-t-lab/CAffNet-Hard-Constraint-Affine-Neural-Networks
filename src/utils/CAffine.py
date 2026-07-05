@@ -134,6 +134,34 @@ def caffine_project(
     )
 
 
+def caffine_project_lite(
+    y: torch.Tensor,
+    w: torch.Tensor,
+    A: torch.Tensor,
+    b: torch.Tensor,
+    tol: float = 1e-10,
+    penalty: float = 1e10,
+) -> torch.Tensor:
+    """Project with the rebuttal CAffNet-Lite active-set subset."""
+    _, n_constraints, y_dim = A.shape
+    candidates = [y.unsqueeze(1)]
+    max_active = min(y_dim, n_constraints)
+    active_sizes = [1] if max_active == 1 else [1, max_active]
+
+    for n_active in active_sizes:
+        A_active, b_active = constraint_combinations(A, b, n_active)
+        candidates.append(project_to_active_constraints(y, w, A_active, b_active))
+
+    return select_feasible_projection(
+        y=y,
+        candidates=torch.cat(candidates, dim=1),
+        A=A,
+        b=b,
+        tol=tol,
+        penalty=penalty,
+    )
+
+
 def hardnet_project(
     y: torch.Tensor,
     A: torch.Tensor,

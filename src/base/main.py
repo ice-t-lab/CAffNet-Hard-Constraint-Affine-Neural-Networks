@@ -14,7 +14,7 @@ import torch
 from box import Box
 from torch import nn
 
-from src.methods.caffnet import CAffNetFF, CAffNetTF
+from src.methods.caffnet import CAffNetFF, CAffNetFFLite, CAffNetTF
 from src.methods.hardnet import HardNet
 from src.methods.nn import NN
 from src.utils.config import Config
@@ -152,9 +152,11 @@ class BaseMain(ABC):
             return NN(self.cfg)
         if method == "HardNet":
             return HardNet(self.cfg, self.require_constraint(method))
-        if method in ("CAffNet-FF", "CAffNet_FF", "CAffNetFF"):
+        if method == "CAffNet-FF":
             return CAffNetFF(self.cfg, self.require_constraint(method))
-        if method in ("CAffNet-TF", "CAffNet_TF", "CAffNetTF"):
+        if method == "CAffNet-FF (Lite)":
+            return CAffNetFFLite(self.cfg, self.require_constraint(method))
+        if method == "CAffNet-TF":
             return CAffNetTF(self.cfg, self.require_constraint(method))
         raise ValueError(f"Unknown method: {method}")
 

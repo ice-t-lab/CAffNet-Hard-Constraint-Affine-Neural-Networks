@@ -10,7 +10,7 @@ from torch import nn
 
 from src.base.constraint import BaseConstraint
 from src.base.net import BaseNet, TransformerBlock
-from src.utils.CAffine import caffine_project
+from src.utils.CAffine import caffine_project, caffine_project_lite
 
 
 Architecture = Literal["ff", "tf"]
@@ -103,6 +103,31 @@ class CAffNetFF(CAffNet):
             constraint=constraint,
             architecture="ff",
         )
+
+
+class CAffNetFFLite(CAffNet):
+    """Feedforward CAffNet-Lite."""
+
+    def __init__(
+        self,
+        cfg: Box,
+        constraint: BaseConstraint,
+    ) -> None:
+        super().__init__(
+            cfg=cfg,
+            constraint=constraint,
+            architecture="ff",
+        )
+        self.name = "CAffNet-FF (Lite)"
+
+    def apply_projection(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        w: torch.Tensor,
+    ) -> torch.Tensor:
+        A, b = self.constraint.caffnet_coefficients(x)
+        return caffine_project_lite(y=y, w=w, A=A, b=b)
 
 
 class CAffNetTF(CAffNet):
