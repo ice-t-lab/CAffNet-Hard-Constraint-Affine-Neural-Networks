@@ -17,6 +17,9 @@ system:
     u:
       lb: [-0.01, -0.5]
       ub: [1, 0.5]
+    x_sample:
+      lb: [-5, -4, -3.14]
+      ub: [1, 2, 3.14]
   obstacles:
     - label: O1
       vertices:
@@ -48,11 +51,6 @@ net:
   default: ff
   ff:
     hidden_dims: [200, 200, 200]
-    activation: relu
-    dropout: 0.0
-  tf:
-    d_model: 120
-    num_heads: 3
     activation: relu
     dropout: 0.0
 
@@ -131,14 +129,11 @@ visualization:
         linestyle: ":"
         linewidth: 2
         label: CAffNet-FF
-      CAffNet_TF:
-        color: blue
-        linestyle: "-"
-        linewidth: 2
-        label: CAffNet-TF
   control:
     figsize: [4.5, 6]
     dpi: 300
+    linewidth: 2
+    alpha: 0.8
     y_tick_format: "%.1f"
     label_fontsize: 16
     tick_fontsize: 14
@@ -161,11 +156,6 @@ visualization:
         linestyle: ":"
         linewidth: 2
         label: CAffNet-FF
-      CAffNet_TF:
-        color: blue
-        linestyle: "-"
-        linewidth: 2
-        label: CAffNet-TF
   loss_history:
     figsize: [4, 3]
     dpi: 300
@@ -191,8 +181,3 @@ visualization:
         linestyle: ":"
         linewidth: 2
         label: CAffNet-FF
-      CAffNet_TF:
-        color: blue
-        linestyle: "-"
-        linewidth: 2
-        label: CAffNet-TF
