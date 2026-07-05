@@ -63,6 +63,10 @@
               "type": "number",
               "minimum": 0,
               "exclusiveMaximum": 1
+            },
+            "batch_norm": {
+              "description": "Whether to insert BatchNorm1d after hidden linear layers.",
+              "type": "boolean"
             }
           }
         },
@@ -107,6 +111,10 @@
             "n_train": {
               "type": "integer",
               "minimum": 2
+            },
+            "n_validation": {
+              "type": "integer",
+              "minimum": 0
             },
             "n_eval": {
               "type": "integer",

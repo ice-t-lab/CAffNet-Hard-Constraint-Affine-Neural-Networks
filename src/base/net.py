@@ -124,6 +124,7 @@ class BaseNet(nn.Module):
         hidden_dims = list(self.cfg.net.ff.hidden_dims)
         activation = self.cfg.net.ff.activation
         dropout = float(getattr(self.cfg.net.ff, "dropout", 0.0))
+        batch_norm = bool(getattr(self.cfg.net.ff, "batch_norm", False))
 
         layers: list[nn.Module] = []
         in_dim = self.x_dim
@@ -131,6 +132,8 @@ class BaseNet(nn.Module):
             linear = nn.Linear(in_dim, int(hidden_dim))
             self.init_linear(linear)
             layers.append(linear)
+            if batch_norm:
+                layers.append(nn.BatchNorm1d(int(hidden_dim)))
             layers.append(self.activation(activation))
             if dropout > 0:
                 layers.append(nn.Dropout(dropout))

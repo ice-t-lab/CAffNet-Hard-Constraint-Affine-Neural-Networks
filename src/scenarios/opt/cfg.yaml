@@ -15,7 +15,8 @@ net:
   ff:
     hidden_dims: [200, 200, 200]
     activation: relu
-    dropout: 0.0
+    dropout: 0.2
+    batch_norm: true
   tf:
     d_model: 120
     num_heads: 3
@@ -26,6 +27,7 @@ simulation:
   seed: 1
   data:
     n_train: 1000
+    n_validation: 10
     n_eval: 1000
     train_range: [-1, 1]
     eval_range: [-1, 1]
