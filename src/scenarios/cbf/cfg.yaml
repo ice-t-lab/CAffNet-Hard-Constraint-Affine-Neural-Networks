@@ -61,7 +61,7 @@ simulation:
     n_eval: 1
   training:
     lr: 0.0001
-    n_epochs: 1000
+    n_epochs: 2000
     batch_size: 300
     soft_weight: 100
     projection_on: 0
@@ -159,7 +159,7 @@ visualization:
   loss_history:
     figsize: [4, 3]
     dpi: 300
-    first_n_epochs: 1000
+    first_n_epochs: 2000
     label_fontsize: 16
     tick_fontsize: 14
     legend_fontsize: 12
