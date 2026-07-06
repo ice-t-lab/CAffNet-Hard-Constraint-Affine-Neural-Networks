@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
+import random
 import time
 
+import numpy as np
 import torch
 
 from src.base.simulation import BaseSimulation, Batch, LossTerms, Metrics, ResultData
@@ -22,6 +25,23 @@ class Simulation(BaseSimulation):
         self.model = self.system.model
         self.dt = float(self.cfg.simulation.rollout.dt)
         self.controller = PIDController(self.cfg).to(self.device)
+
+    def before_train(self) -> None:
+        seed = int(self.cfg.simulation.seed)
+        os.environ["PYTHONHASHSEED"] = str(seed)
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+        try:
+            torch.use_deterministic_algorithms(True, warn_only=True)
+        except TypeError:
+            torch.use_deterministic_algorithms(True)
 
     def simulate(self, batch: Batch) -> LossTerms:
         rollout = self.rollout(
