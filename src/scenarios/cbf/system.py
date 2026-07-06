@@ -62,6 +62,17 @@ class System(BaseSystem):
             dtype=x.dtype,
         )
 
+    def generate_x_train(self) -> torch.Tensor:
+        # Rebuttal CBF generated data once in BaseSystem, then regenerated it.
+        self._generate_x(self.cfg.simulation.data.n_train)
+        self._generate_x(self.cfg.simulation.data.n_validation)
+        self._generate_x(self.cfg.simulation.data.n_eval)
+        return self._generate_x(self.cfg.simulation.data.n_train)
+
+    def generate_x_eval(self) -> torch.Tensor:
+        self._generate_x(self.cfg.simulation.data.n_validation)
+        return self._generate_x(self.cfg.simulation.data.n_eval)
+
     def A(self, x: torch.Tensor) -> torch.Tensor:
         _, _, Lgh_x = self.h(x, self.kappa)
         A_u = self.tensor(self.input_cons.A, x).unsqueeze(0).expand(x.shape[0], -1, -1)
