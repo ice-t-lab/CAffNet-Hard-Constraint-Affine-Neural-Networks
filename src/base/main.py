@@ -51,6 +51,7 @@ class BaseMain(ABC):
 
     def run(self, methods: list[str] | None = None) -> BaseResult:
         """Run methods and build saved result artifacts."""
+        self.seed_everything()
         self.setup_logging()
         self.log_hardware_info()
         self.logger.info("Using device: %s", self.device)
@@ -257,13 +258,18 @@ class BaseMain(ABC):
         """Seed Python, NumPy, and torch."""
         import numpy as np
 
-        seed = self.cfg.simulation.seed
+        seed = int(self.cfg.simulation.seed)
+        os.environ["PYTHONHASHSEED"] = str(seed)
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            if hasattr(torch, "mps") and hasattr(torch.mps, "manual_seed"):
+                torch.mps.manual_seed(seed)
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
         try:

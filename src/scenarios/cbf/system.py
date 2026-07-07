@@ -47,11 +47,11 @@ class System(BaseSystem):
     def f(self, x: torch.Tensor) -> torch.Tensor:
         return self.zero_y(x)
 
-    def generate_y_train(self) -> torch.Tensor:
-        return self.zero_y(self.x_train)
+    def generate_y_train(self) -> None:
+        return None
 
-    def generate_y_eval(self) -> torch.Tensor:
-        return self.zero_y(self.x_eval)
+    def generate_y_eval(self) -> None:
+        return None
 
     def zero_y(self, x: torch.Tensor) -> torch.Tensor:
         return torch.zeros(

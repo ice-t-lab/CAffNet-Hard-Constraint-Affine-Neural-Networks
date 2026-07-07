@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import random
 import time
+from typing import Literal
 
 import numpy as np
 import torch
@@ -42,6 +43,11 @@ class Simulation(BaseSimulation):
             torch.use_deterministic_algorithms(True, warn_only=True)
         except TypeError:
             torch.use_deterministic_algorithms(True)
+
+    def get_data(self, split: Literal["train", "eval"]) -> Batch:
+        if split == "train":
+            return {"x": self.system.x_train}
+        return {"x": self.system.x_eval}
 
     def simulate(self, batch: Batch) -> LossTerms:
         rollout = self.rollout(
@@ -88,7 +94,7 @@ class Simulation(BaseSimulation):
         n_steps = int(horizon / self.dt)
         n_samples, x_dim, _ = x.shape
         x_ref = torch.zeros(n_samples, x_dim, 1, device=x.device, dtype=x.dtype)
-        x_k = x.clone()
+        x_k = x
         main_loss = torch.zeros((), device=x.device, dtype=x.dtype)
         constraint_violation_loss = torch.zeros((), device=x.device, dtype=x.dtype)
         test_time = 0.0
@@ -105,7 +111,8 @@ class Simulation(BaseSimulation):
             error = self.system.global2local(x_ref, x_k)
             u_nom = torch.clamp(self.controller(error), u_lb, u_ub)
 
-            start = time.perf_counter()
+            if measure_time:
+                start = time.perf_counter()
             u_k = self.net(x_k, u_nom)
             if measure_time:
                 test_time += time.perf_counter() - start
