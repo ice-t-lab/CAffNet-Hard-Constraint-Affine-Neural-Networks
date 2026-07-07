@@ -1,0 +1,184 @@
+# yaml-language-server: $schema=../../utils/cfg_schema.json
+
+scenario:
+  id: cbf
+  name: control-barrier functions
+
+system:
+  x_dim: 3
+  y_dim: 2
+  cbf:
+    smooth_factor: 10
+    barrier_coefficient: 1
+  constraints:
+    x:
+      lb: [-5, -4, -3.14]
+      ub: [1, 2, 3.14]
+    u:
+      lb: [-0.01, -0.5]
+      ub: [1, 0.5]
+    x_sample:
+      lb: [-5, -4, -3.14]
+      ub: [1, 2, 3.14]
+  obstacles:
+    - label: O1
+      vertices:
+        - [-0.36282, -0.08718]
+        - [-0.06282, -0.38718]
+        - [0.08718, 0.36282]
+        - [-0.51282, 0.21282]
+        - [0.53718, -0.08718]
+      center: [-1.2, 0.0]
+    - label: O2
+      vertices:
+        - [-0.3, 0.12]
+        - [0.21969, 0.33123]
+        - [-0.23031, 0.39123]
+        - [-0.15, -0.3]
+        - [-0.08031, 0.45123]
+        - [0.51969, -0.50877]
+      center: [-1.5, -2.0]
+    - label: O3
+      vertices:
+        - [0, -0.6]
+        - [0.1671, -0.6]
+        - [-0.28329, -0.1]
+        - [0.31671, 0.0]
+        - [0.01671, 0.6]
+      center: [-2.8, 0.5]
+
+net:
+  default: ff
+  ff:
+    hidden_dims: [200, 200, 200]
+    activation: relu
+    dropout: 0.0
+
+simulation:
+  seed: 1
+  data:
+    n_train: 300
+    n_validation: 1
+    n_eval: 1
+  training:
+    lr: 0.0001
+    n_epochs: 2000
+    batch_size: 300
+    soft_weight: 100
+    projection_on: 0
+    resume: false
+  logging:
+    log_freq: 10
+    save_freq: 1000
+  save:
+    config: true
+    training_samples: false
+    evaluation_samples: false
+    model_state: true
+    optimizer_state: false
+    rng_state: false
+    loss_history: true
+    predictions: false
+    controls: true
+    metrics: true
+    figures: true
+  rollout:
+    dt: 0.1
+    t_train: 15
+    t_eval: 10
+    x_0: [[-4.5], [0], [0.5]]
+  cost:
+    Q: [1000, 1000, 0]
+    R: [1, 1]
+    Qf: [1000000, 1000000, 0]
+  controller:
+    k_p: [0.01, 0.2, -0.0]
+    k_i: [0.05, 0.005, -0.0]
+    k_d: [0.0, 0.01, -0.0]
+
+visualization:
+  problem:
+    figsize: [4, 4]
+    dpi: 300
+    xlim: [-5, 1]
+    ylim: [-3, 1.5]
+    xlabel: position, $p_x$ ($m$)
+    ylabel: position, $p_y$ ($m$)
+    grid: false
+    aspect: equal
+    label_fontsize: 16
+    tick_fontsize: 14
+    obstacle_label_fontsize: 14
+  result:
+    linewidth: 2
+    alpha: 0.8
+    legend_loc: lower right
+    legend_frameon: true
+    method_styles:
+      NN:
+        color: green
+        linestyle: "-."
+        linewidth: 2
+        label: NN
+      HardNet:
+        color: orange
+        linestyle: "--"
+        linewidth: 2
+        label: HardNet
+      CAffNet_FF:
+        color: black
+        linestyle: ":"
+        linewidth: 2
+        label: CAffNet-FF
+  control:
+    figsize: [4.5, 6]
+    dpi: 300
+    linewidth: 2
+    alpha: 0.8
+    y_tick_format: "%.1f"
+    label_fontsize: 16
+    tick_fontsize: 14
+    legend_loc: upper right
+    legend_ncol: 2
+    legend_frameon: true
+    method_styles:
+      NN:
+        color: green
+        linestyle: "-."
+        linewidth: 2
+        label: NN
+      HardNet:
+        color: orange
+        linestyle: "--"
+        linewidth: 2
+        label: HardNet
+      CAffNet_FF:
+        color: black
+        linestyle: ":"
+        linewidth: 2
+        label: CAffNet-FF
+  loss_history:
+    figsize: [4, 3]
+    dpi: 300
+    first_n_epochs: 2000
+    label_fontsize: 16
+    tick_fontsize: 14
+    legend_fontsize: 12
+    linewidth: 2
+    alpha: 0.8
+    method_styles:
+      NN:
+        color: green
+        linestyle: "-."
+        linewidth: 2
+        label: NN
+      HardNet:
+        color: orange
+        linestyle: "--"
+        linewidth: 2
+        label: HardNet
+      CAffNet_FF:
+        color: black
+        linestyle: ":"
+        linewidth: 2
+        label: CAffNet-FF
