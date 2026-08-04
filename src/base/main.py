@@ -54,8 +54,9 @@ class BaseMain(ABC):
         self.log_hardware_info()
         self.logger.info("Using device: %s", self.device)
         self.setup()
-        completed_methods = [self.run_method(method) for method in self.methods]
-        self.save_results(completed_methods)
+        for method in self.methods:
+            self.run_method(method)
+        self.save_results()
         return self.result
 
     def setup(self) -> None:
@@ -113,20 +114,20 @@ class BaseMain(ABC):
         """Evaluate once and return saved metrics plus plotting data."""
         return simulation.evaluate()
 
-    def save_results(self, methods: list[str]) -> None:
-        """Build combined result outputs from saved method data."""
+    def save_results(self) -> None:
+        """Build combined outputs from all saved method directories."""
         if self.cfg.simulation.save.metrics:
-            self.result.table(methods)
-            self.result.latex_table(methods)
+            self.result.table()
+            self.result.latex_table()
 
         if self.cfg.simulation.save.figures and "result" in self.cfg.visualization:
-            self.result.plot_results(methods)
+            self.result.plot_results()
         if (
             self.cfg.simulation.save.figures
             and self.cfg.simulation.save.loss_history
             and "loss_history" in self.cfg.visualization
         ):
-            self.result.plot_loss(methods)
+            self.result.plot_loss()
 
     def save_common_data(self) -> None:
         """Save data shared by all methods."""

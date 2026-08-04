@@ -41,10 +41,10 @@ class Main(BaseMain):
             device=self.device,
         )
 
-    def save_results(self, methods: list[str]) -> None:
-        super().save_results(methods)
+    def save_results(self) -> None:
+        super().save_results()
         if self.cfg.simulation.save.figures and self.cfg.simulation.save.controls:
-            self.plot_controls(methods)
+            self.plot_controls(self.result.result_methods())
 
     def plot_controls(self, methods: list[str]) -> None:
         method_data = {
