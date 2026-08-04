@@ -23,8 +23,6 @@ torch.set_default_dtype(torch.float64)
 class Main(BaseMain):
     """OPT experiment runner."""
 
-    default_methods = ["NN", "HardNet", "CAffNet-FF", "CAffNet-TF", "Optimizer (IPOPT)"]
-
     def build_system(self) -> System:
         return System(self.cfg)
 
@@ -32,7 +30,7 @@ class Main(BaseMain):
         return Constraint(self.cfg, self.system)
 
     def build_visualization(self) -> Visualization:
-        return Visualization(self.cfg, self.system)
+        return Visualization(self.cfg, self.system, self.constraint)
 
     def build_simulation(self, net: torch.nn.Module) -> BaseSimulation:
         return Simulation(
@@ -44,7 +42,7 @@ class Main(BaseMain):
         )
 
     def run_method(self, method: str) -> str:
-        if method in ("IPOPT", "Optimizer (IPOPT)"):
+        if method == "Optimizer (IPOPT)":
             return self.run_ipopt()
         return super().run_method(method)
 
@@ -55,8 +53,8 @@ class Main(BaseMain):
         y_eval, test_time = self.system.solve_ipopt(x_eval)
         n_eval = x_eval.shape[0]
         obj_val = self.system.get_main_loss(None, y_eval)
-        ineq_err = self.system.get_ineq_err(x_eval, y_eval)
-        eq_err = self.system.get_eq_err(x_eval, y_eval)
+        ineq_err = self.constraint.ineq_err(x_eval, y_eval)
+        eq_err = self.constraint.eq_err(x_eval, y_eval)
         metrics = {
             "Obj. value": (obj_val / n_eval).item(),
             "Max ineq viol.": (torch.max(ineq_err, dim=1).values.sum() / n_eval).item(),
@@ -82,8 +80,7 @@ def main(
     seed: int | None = None,
 ) -> None:
     cfg = Main.load_cfg(Path(__file__).with_name("cfg.yaml"), dir_name, seed)
-    methods = None if method == "all" else [method]
-    Main(cfg, methods=methods).run()
+    Main(cfg, methods=[method]).run()
 
 
 if __name__ == "__main__":

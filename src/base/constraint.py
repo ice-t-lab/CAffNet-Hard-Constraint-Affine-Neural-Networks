@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Literal
 
 import torch
 from box import Box
-
-
-ConstraintMethod = Literal["CAffNet-FF", "CAffNet-TF", "HardNet"]
 
 
 class BaseConstraint(ABC):
@@ -40,7 +36,7 @@ class BaseConstraint(ABC):
     def caffnet_b(self, x: torch.Tensor) -> torch.Tensor:
         """Return b(x) for CAffNet constraints A(x)y <= b(x)."""
         raise NotImplementedError
-    
+
     def caffnet_coefficients(
         self,
         x: torch.Tensor,
@@ -70,19 +66,12 @@ class BaseConstraint(ABC):
         """Return the full HardNet constraint tuple: A(x), bl(x), bu(x)."""
         return self.hardnet_A(x), self.hardnet_bl(x), self.hardnet_bu(x)
 
-    def coefficients(
-        self,
-        x: torch.Tensor,
-        method: ConstraintMethod,
-    ) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Return constraint coefficients for a method family.
+    def violation_loss(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """Return the summed squared violation of the CAffNet inequalities."""
+        residual = self.caffnet_A(x) @ y - self.caffnet_b(x)
+        violation = torch.clamp(residual, min=0.0)
+        return (torch.norm(violation.squeeze(-1), dim=1) ** 2).sum()
 
-        Prefer ``caffnet_coefficients`` or ``hardnet_coefficients`` when the
-        caller already knows the method family. This dispatcher is useful in
-        shared training/evaluation code.
-        """
-        if method in ("CAffNet-FF", "CAffNet-TF"):
-            return self.caffnet_coefficients(x)
-        if method == "HardNet":
-            return self.hardnet_coefficients(x)
-        raise ValueError(f"Unknown constraint method: {method}")
+    def ineq_err(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        """Return positive CAffNet inequality residuals."""
+        return torch.clamp(self.caffnet_A(x) @ y - self.caffnet_b(x), min=0.0)

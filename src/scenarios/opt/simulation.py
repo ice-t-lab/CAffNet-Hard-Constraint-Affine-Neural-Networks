@@ -34,7 +34,7 @@ class Simulation(BaseSimulation):
     def simulate(self, batch: Batch) -> LossTerms:
         y_pred = self.predict(batch)
         main_loss = self.system.get_main_loss(batch.get("y"), y_pred)
-        constraint_violation_loss = self.system.get_constraint_violation_loss(
+        constraint_violation_loss = self.constraint.violation_loss(
             batch["x"],
             y_pred,
         )
@@ -54,7 +54,7 @@ class Simulation(BaseSimulation):
         y_pred: torch.Tensor,
     ) -> LossTerms:
         main_loss = self.system.get_main_loss(batch.get("y"), y_pred)
-        constraint_violation_loss = self.system.get_constraint_violation_loss(
+        constraint_violation_loss = self.constraint.violation_loss(
             batch["x"],
             y_pred,
         )
@@ -85,8 +85,8 @@ class Simulation(BaseSimulation):
     ) -> Metrics:
         n_eval = x.shape[0]
         obj_val = self.system.get_main_loss(None, y)
-        ineq_err = self.system.get_ineq_err(x, y)
-        eq_err = self.system.get_eq_err(x, y)
+        ineq_err = self.constraint.ineq_err(x, y)
+        eq_err = self.constraint.eq_err(x, y)
         n_ineq = ineq_err.shape[1]
         n_eq = eq_err.shape[1]
         return {

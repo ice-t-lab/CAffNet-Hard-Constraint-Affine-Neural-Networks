@@ -36,7 +36,7 @@ class Simulation(BaseSimulation):
         """Run one PWC batch with rebuttal-style summed losses."""
         y_pred = self.predict(batch)
         main_loss = self.system.get_main_loss(batch["y"], y_pred)
-        constraint_violation_loss = self.system.get_constraint_violation_loss(
+        constraint_violation_loss = self.constraint.violation_loss(
             batch["x"],
             y_pred,
         )
@@ -60,7 +60,7 @@ class Simulation(BaseSimulation):
         """Return rebuttal-style PWC evaluation metrics."""
         n_eval = batch["x"].shape[0]
         mse = self.system.get_main_loss(batch["y"], y_pred) / n_eval
-        ineq_err = self.system.get_ineq_err(batch["x"], y_pred)
+        ineq_err = self.constraint.ineq_err(batch["x"], y_pred)
         return {
             "MSE": self.to_scalar(mse),
             "Max ineq viol.": self.to_scalar(

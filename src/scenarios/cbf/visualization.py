@@ -12,14 +12,16 @@ from matplotlib.ticker import FormatStrFormatter
 
 from src.base.visualization import BaseVisualization
 
+from .constraint import Constraint
 from .system import DEVICE, System
 
 
 class Visualization(BaseVisualization):
     """Trajectory and control plots for CBF rollouts."""
 
-    def __init__(self, cfg: Box, system: System) -> None:
+    def __init__(self, cfg: Box, system: System, constraint: Constraint) -> None:
         super().__init__(cfg, system)
+        self.constraint = constraint
 
     def plot_problem(self, show_plot: bool = True) -> tuple[plt.Figure, plt.Axes]:
         cfg = self.cfg.visualization.problem
@@ -55,7 +57,7 @@ class Visualization(BaseVisualization):
         flat = np.vstack((PX.flatten(), PY.flatten(), np.zeros(PX.size))).T
         X = torch.tensor(flat, dtype=torch.get_default_dtype(), device=DEVICE).unsqueeze(-1)
         with torch.no_grad():
-            H, _, _ = self.system._h_single_obs(X, obs, self.system.kappa)
+            H, _, _ = self.constraint.obstacle_barrier(X, obs)
         H = H.squeeze().cpu().numpy().reshape(PX.shape)
         ax.contour(PX, PY, H, levels=[0], colors="red", linewidths=2)
 
@@ -158,8 +160,8 @@ class Visualization(BaseVisualization):
         t: torch.Tensor,
         x: torch.Tensor,
     ) -> None:
-        A = self.system.A(x).detach().cpu().numpy()
-        b = self.system.b(x).detach().cpu().numpy()
+        A = self.constraint.caffnet_A(x).detach().cpu().numpy()
+        b = self.constraint.caffnet_b(x).detach().cpu().numpy()
         t_np = self._to_numpy(t)
         fill_min, fill_max = -1000, 1000
 

@@ -8,14 +8,16 @@ from box import Box
 
 from src.base.visualization import BaseVisualization
 
+from .constraint import Constraint
 from .system import System
 
 
 class Visualization(BaseVisualization):
     """OPT has no default figure; it reports rebuttal-style metric tables."""
 
-    def __init__(self, cfg: Box, system: System) -> None:
+    def __init__(self, cfg: Box, system: System, constraint: Constraint) -> None:
         super().__init__(cfg, system)
+        self.constraint = constraint
 
     def plot_problem(self, show_plot: bool = True):
         raise NotImplementedError("OPT does not define a problem plot.")
