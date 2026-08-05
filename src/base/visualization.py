@@ -156,6 +156,8 @@ class BaseVisualization:
         legend_cfg = {}
         if "legend_loc" in cfg:
             legend_cfg["loc"] = cfg.legend_loc
+        if "legend_bbox_to_anchor" in cfg:
+            legend_cfg["bbox_to_anchor"] = cfg.legend_bbox_to_anchor
         if "legend_ncol" in cfg:
             legend_cfg["ncol"] = cfg.legend_ncol
         if "legend_frameon" in cfg:

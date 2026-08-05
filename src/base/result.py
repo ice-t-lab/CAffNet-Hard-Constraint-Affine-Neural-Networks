@@ -154,15 +154,16 @@ class BaseResult:
             raise FileNotFoundError(f"No loss files found in {self.result_dir}")
 
         first = next(iter(losses.values()))
-        terms = [
-            term
-            for term in ("main_loss", "constraint_violation_loss", "total_loss")
-            if term in first
-        ]
+        cfg = self.cfg.visualization.loss_history
+        configured_terms = (
+            list(cfg.terms)
+            if "terms" in cfg
+            else ["main_loss", "constraint_violation_loss", "total_loss"]
+        )
+        terms = [term for term in configured_terms if term in first]
         if not terms:
             raise ValueError("Saved loss history has no plottable loss columns.")
 
-        cfg = self.cfg.visualization.loss_history
         fig, axs = plt.subplots(
             len(terms),
             1,
@@ -175,7 +176,12 @@ class BaseResult:
         for method, loss in losses.items():
             if "first_n_epochs" in cfg:
                 loss = loss.head(cfg.first_n_epochs)
-            epoch = loss["epoch"] if "epoch" in loss else range(1, len(loss) + 1)
+            use_epoch = "use_epoch" not in cfg or cfg.use_epoch
+            epoch = (
+                loss["epoch"]
+                if use_epoch and "epoch" in loss
+                else range(len(loss))
+            )
             style = self.method_style(cfg, method)
             for ax, term in zip(axs, terms, strict=True):
                 ax.plot(
@@ -189,8 +195,9 @@ class BaseResult:
                 )
 
         for ax, term in zip(axs, terms, strict=True):
-            ax.set_ylabel(term)
-            ax.grid(True)
+            ylabel = cfg.ylabel if len(terms) == 1 and "ylabel" in cfg else term
+            ax.set_ylabel(ylabel)
+            ax.grid(cfg.grid if "grid" in cfg else True)
             if "ylim" in cfg:
                 ax.set_ylim(cfg.ylim)
             ax.legend(fontsize=cfg.legend_fontsize)
@@ -199,7 +206,7 @@ class BaseResult:
                 cfg.label_fontsize,
                 cfg.tick_fontsize,
             )
-        axs[-1].set_xlabel("epoch")
+        axs[-1].set_xlabel(cfg.xlabel if "xlabel" in cfg else "epoch")
 
         plt.tight_layout()
         save_dir = self.result_dir if output_dir is None else Path(output_dir)

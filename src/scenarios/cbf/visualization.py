@@ -39,8 +39,16 @@ class Visualization(BaseVisualization):
             )
             self.plot_obstacle_boundary(ax, obs)
 
-        ax.add_patch(plt.Circle((0, 0), 0.1, color="green", alpha=0.8, label="Goal Region"))
-        ax.plot([], [], "go", label="$x_0$")
+        ax.add_patch(
+            plt.Circle(
+                (0, 0),
+                0.1,
+                color="green",
+                alpha=0.8,
+                label="Goal Region",
+            )
+        )
+        ax.plot([], [], "ro", label="$x_0$")
         ax.plot([], [], "ks", label="$x_N$")
         self._format_axis(ax, cfg)
         ax.legend()
@@ -55,7 +63,11 @@ class Visualization(BaseVisualization):
         py = np.linspace(constraints.lb[1], constraints.ub[1], 400)
         PX, PY = np.meshgrid(px, py)
         flat = np.vstack((PX.flatten(), PY.flatten(), np.zeros(PX.size))).T
-        X = torch.tensor(flat, dtype=torch.get_default_dtype(), device=DEVICE).unsqueeze(-1)
+        X = torch.tensor(
+            flat,
+            dtype=torch.get_default_dtype(),
+            device=DEVICE,
+        ).unsqueeze(-1)
         with torch.no_grad():
             H, _, _ = self.constraint.obstacle_barrier(X, obs)
         H = H.squeeze().cpu().numpy().reshape(PX.shape)
@@ -154,6 +166,45 @@ class Visualization(BaseVisualization):
             plt.show()
         return fig, ax
 
+    def plot_control(
+        self,
+        data: dict[str, torch.Tensor],
+        show_plot: bool = True,
+    ) -> tuple[plt.Figure, np.ndarray]:
+        cfg = self.cfg.visualization.control
+        fig, ax = plt.subplots(2, 1, figsize=cfg.figsize, dpi=cfg.dpi)
+        u_nom = data["u_nom"]
+        u = data["u"]
+        x = data["x"]
+        t = torch.arange(0, u.shape[0], dtype=u.dtype) * float(
+            self.cfg.simulation.rollout.dt
+        )
+        t_np = self._to_numpy(t)
+
+        self.plot_control_constraints(ax, t, x[:-1])
+        for index in range(2):
+            ax[index].plot(
+                t_np,
+                self._to_numpy(u_nom[:, index, 0]),
+                c="blue",
+                linestyle="--",
+                linewidth=2,
+                label=r"$u_{nom}(x)$",
+            )
+            ax[index].plot(
+                t_np,
+                self._to_numpy(u[:, index, 0]),
+                c="black",
+                linestyle="-",
+                linewidth=2,
+                label=r"$u_{nom}(x) + u_{net}(x)$",
+            )
+
+        self.format_control_axes(ax)
+        if show_plot:
+            plt.show()
+        return fig, ax
+
     def plot_control_constraints(
         self,
         ax: np.ndarray,
@@ -171,17 +222,45 @@ class Visualization(BaseVisualization):
             if np.allclose(Ai[:, 1], 0, atol=1e-6):
                 a1 = Ai[:, 0]
                 bound = bi / a1
-                ax[0].plot(t_np, np.where(a1 > 0, bound, np.nan), "r--", lw=1.0)
-                ax[0].plot(t_np, np.where(a1 < 0, bound, np.nan), "r--", lw=1.0)
-                ax[0].fill_between(t_np, bound, fill_max, where=a1 > 0, color="red", alpha=0.08)
-                ax[0].fill_between(t_np, fill_min, bound, where=a1 < 0, color="red", alpha=0.08)
+                ax[0].plot(t_np, np.where(a1 > 0, bound, np.nan), "r--", lw=1.2)
+                ax[0].plot(t_np, np.where(a1 < 0, bound, np.nan), "r--", lw=1.2)
+                ax[0].fill_between(
+                    t_np,
+                    bound,
+                    fill_max,
+                    where=a1 > 0,
+                    color="red",
+                    alpha=0.1,
+                )
+                ax[0].fill_between(
+                    t_np,
+                    fill_min,
+                    bound,
+                    where=a1 < 0,
+                    color="red",
+                    alpha=0.1,
+                )
             elif np.allclose(Ai[:, 0], 0, atol=1e-6):
                 a2 = Ai[:, 1]
                 bound = bi / a2
-                ax[1].plot(t_np, np.where(a2 > 0, bound, np.nan), "r--", lw=1.0)
-                ax[1].plot(t_np, np.where(a2 < 0, bound, np.nan), "r--", lw=1.0)
-                ax[1].fill_between(t_np, bound, fill_max, where=a2 > 0, color="red", alpha=0.08)
-                ax[1].fill_between(t_np, fill_min, bound, where=a2 < 0, color="red", alpha=0.08)
+                ax[1].plot(t_np, np.where(a2 > 0, bound, np.nan), "r--", lw=1.2)
+                ax[1].plot(t_np, np.where(a2 < 0, bound, np.nan), "r--", lw=1.2)
+                ax[1].fill_between(
+                    t_np,
+                    bound,
+                    fill_max,
+                    where=a2 > 0,
+                    color="red",
+                    alpha=0.1,
+                )
+                ax[1].fill_between(
+                    t_np,
+                    fill_min,
+                    bound,
+                    where=a2 < 0,
+                    color="red",
+                    alpha=0.1,
+                )
 
     def format_control_axes(self, ax: np.ndarray) -> None:
         cfg = self.cfg.visualization.control

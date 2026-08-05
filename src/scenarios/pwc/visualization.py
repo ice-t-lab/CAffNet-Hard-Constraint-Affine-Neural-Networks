@@ -74,6 +74,7 @@ class Visualization(BaseVisualization):
         )
 
         self._format_axis(ax, cfg)
+        ax.legend(fontsize=cfg.legend_fontsize)
         plt.tight_layout()
         if show_plot:
             plt.show()
