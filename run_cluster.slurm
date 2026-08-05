@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=pwc
+#SBATCH --job-name=CAffNet
 #SBATCH --partition=gpu               # batch GPU partition (interactive is gpu-interactive)
 #SBATCH --gres=gpu:v100-sxm2:1         # or gpu:v100-pcie:1
 #SBATCH --cpus-per-task=4
