@@ -36,6 +36,7 @@ def build_average_table(
     output_dir: str | Path | None = None,
     metric_rename: MetricRename | None = None,
     column_rename: ColumnRename | None = None,
+    scientific_columns: list[str] | None = None,
     bold_best: bool = False,
     csv_filename: str = "evaluation_all_seeds.csv",
     tex_filename: str = "evaluation_all_seeds.tex",
@@ -71,6 +72,8 @@ def build_average_table(
         table = table.rename(columns=column_rename, level=0)
     if bold_best:
         table = bold_best_mean_values(table)
+    if scientific_columns is not None:
+        table = format_scientific_columns(table, scientific_columns)
 
     table.to_csv(output_dir / csv_filename, index=False)
     latex = df2latex(table)
@@ -93,7 +96,16 @@ def load_seed_metrics(seed_dir: str | Path, methods: list[str]) -> pd.DataFrame:
         table = pd.read_csv(path)
         table["Method"] = method
         tables.append(table)
-    return pd.concat(tables, ignore_index=True)
+    table = pd.concat(tables, ignore_index=True)
+    time_columns = ["Train Time (s)", "Test Time (s)"]
+    columns = [
+        column
+        for column in table.columns
+        if column != "Method" and column not in time_columns
+    ]
+    columns = ["Method", *columns]
+    columns.extend(column for column in time_columns if column in table.columns)
+    return table[columns]
 
 
 def metric_paths(seed_dir: str | Path, method: str) -> list[Path]:
@@ -124,7 +136,10 @@ def bold_best_mean_values(table: pd.DataFrame) -> pd.DataFrame:
     for column in metric_cols:
         values = out[column].astype(str).str.strip()
         mean_mask = ~values.str.startswith("(")
-        numeric = pd.to_numeric(out.loc[mean_mask, column], errors="coerce")
+        numeric = pd.to_numeric(
+            values.loc[mean_mask].str.removesuffix("%"),
+            errors="coerce",
+        )
         best = numeric.min()
         if pd.isna(best):
             continue
@@ -133,14 +148,58 @@ def bold_best_mean_values(table: pd.DataFrame) -> pd.DataFrame:
             text = str(value).strip()
             if text.startswith("("):
                 return value
+            is_percentage = text.endswith("%")
             try:
-                numeric_value = float(text)
+                numeric_value = float(text.removesuffix("%"))
             except ValueError:
                 return value
-            formatted = f"{numeric_value:.4f}"
+            formatted = (
+                f"{numeric_value:.2f}%"
+                if is_percentage
+                else f"{numeric_value:.4f}"
+            )
             if np.isclose(numeric_value, best):
                 return rf"\textbf{{{formatted}}}"
             return formatted
 
+        out[column] = out[column].map(fmt)
+    return out
+
+
+def format_scientific_columns(
+    table: pd.DataFrame,
+    column_names: list[str],
+) -> pd.DataFrame:
+    """Format selected mean/std columns using rebuttal-style scientific notation."""
+    out = table.copy()
+    selected = {
+        column
+        for column in out.columns
+        if column[0] in column_names
+    }
+
+    def fmt(value: object) -> object:
+        text = str(value).strip()
+        bold = text.startswith(r"\textbf{") and text.endswith("}")
+        if bold:
+            text = text[len(r"\textbf{") : -1]
+        parenthesized = text.startswith("(") and text.endswith(")")
+        numeric_text = text[1:-1].strip() if parenthesized else text
+        try:
+            numeric_value = float(numeric_text)
+        except ValueError:
+            return value
+
+        if numeric_value == 0:
+            formatted = "0"
+        else:
+            mantissa, exponent = f"{numeric_value:.4e}".split("e")
+            formatted = rf"{float(mantissa):.4f}\times 10^{{{int(exponent)}}}"
+        if bold:
+            formatted = rf"\mathbf{{{formatted}}}"
+        formatted = rf"$ {formatted} $"
+        return f"({formatted})" if parenthesized else formatted
+
+    for column in selected:
         out[column] = out[column].map(fmt)
     return out

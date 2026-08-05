@@ -101,7 +101,7 @@ visualization:
     grid: false
     label_fontsize: 10
     tick_fontsize: 10
-    legend_fontsize: 10
+    legend_fontsize: 12
     linewidth: 3
     alpha: 0.75
     method_styles:

@@ -63,6 +63,7 @@ class Main(BaseMain):
             "Max eq viol.": (torch.max(eq_err, dim=1).values.sum() / n_eval).item(),
             "Mean eq viol.": (torch.mean(eq_err, dim=1).sum() / n_eval).item(),
             "Num eq viol. (%)": ((eq_err > 1e-6).sum() / n_eval / eq_err.shape[1]).item(),
+            "Train Time (s)": "-",
             "Test Time (s)": test_time,
         }
         self.result.save(

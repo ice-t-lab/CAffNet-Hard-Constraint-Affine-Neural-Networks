@@ -114,6 +114,7 @@ visualization:
     alpha: 1.0
     legend_loc: lower right
     legend_frameon: true
+    legend_fontsize: 13
     method_styles:
       NN:
         color: green
@@ -141,6 +142,7 @@ visualization:
     legend_loc: upper right
     legend_ncol: 2
     legend_frameon: true
+    legend_fontsize: 13
     method_styles:
       NN:
         color: green

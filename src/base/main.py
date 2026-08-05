@@ -93,7 +93,10 @@ class BaseMain(ABC):
             self.save_optimizer(method, simulation)
 
         metrics, result_data = self.evaluate(simulation)
+        test_time = metrics.pop("Test Time (s)", None)
         metrics["Train Time (s)"] = train_time / self.cfg.simulation.training.n_epochs
+        if test_time is not None:
+            metrics["Test Time (s)"] = test_time
 
         self.result.save(
             method=method,

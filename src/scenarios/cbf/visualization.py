@@ -278,6 +278,7 @@ class Visualization(BaseVisualization):
                 loc=cfg.legend_loc,
                 ncol=cfg.legend_ncol,
                 frameon=cfg.legend_frameon,
+                fontsize=cfg.legend_fontsize,
             )
         self._apply_axis_fontsize(ax, cfg.label_fontsize, cfg.tick_fontsize)
         plt.tight_layout()
