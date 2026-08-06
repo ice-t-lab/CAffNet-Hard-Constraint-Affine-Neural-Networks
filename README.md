@@ -104,7 +104,7 @@ For example, train and evaluate CAffNet-FF on PWC with seed 1:
 
 ```bash
 python3 -m src.scenarios.pwc.main \
-  --dir_name final \
+  --dir_name test \
   --seed 1 \
   --method "CAffNet-FF"
 ```
@@ -113,7 +113,7 @@ Run the lightweight optimization model with:
 
 ```bash
 python3 -m src.scenarios.opt.main \
-  --dir_name final \
+  --dir_name test \
   --seed 1 \
   --method "CAffNet-FF (Lite)"
 ```
@@ -122,7 +122,7 @@ Run the IPOPT reference solver with:
 
 ```bash
 python3 -m src.scenarios.opt.main \
-  --dir_name final \
+  --dir_name test \
   --seed 1 \
   --method "Optimizer (IPOPT)"
 ```
@@ -148,22 +148,26 @@ for method in "${methods[@]}"; do
 done
 ```
 
-The included local runner has the interface:
+You can also use the included local runner:
 
 ```bash
-./run.sh <scenario> <dir_name> <seed>
+./run.sh <scenario> <dir_name> <seed> <method>
 ```
 
-For example:
+Run one method:
 
 ```bash
-./run.sh pwc final 1
+./run.sh pwc test 1 "CAffNet-FF"
 ```
 
-As currently configured, `run.sh` executes the four PWC methods: `NN`, `HardNet`,
-`CAffNet-FF`, and `CAffNet-TF`. When using it for OPT or CBF, change only the
-explicit method command lines in `run.sh` to the scenario-specific set listed
-above.
+Run multiple methods sequentially:
+
+```bash
+./run.sh opt test 1 NN HardNet CAffNet-FF "CAffNet-FF (Lite)" CAffNet-TF
+```
+
+Each method is a separate argument, so quote names containing spaces or
+parentheses. The command exits with a usage error when no method is provided.
 
 ## Configuration
 
@@ -241,7 +245,7 @@ the rebuttal-style figures from saved data. The default reproduction settings ar
 | -------- | ----------------------------------- | --------------------- |
 | PWC      | `1, 3, 5, 6, 7`                   | `6`                 |
 | OPT      | `1, 2, 5, 7, 12`                  | Not applicable        |
-| CBF      | All complete seeds found in the run | `10`                  |
+| CBF      | `2, 6, 7, 10, 11`                  | `10`                  |
 
 Generated aggregate files are written to `results/<scenario>/<dir_name>/`,
 including `evaluation_all_seeds.csv`, `evaluation_all_seeds.tex`, and the selected
@@ -263,18 +267,24 @@ the job script starts:
 mkdir -p logs
 ```
 
-Submit a seed array with the scenario and shared result directory name as
-positional arguments:
+Submit a seed array with one method:
 
 ```bash
-sbatch --array=1,3,5,6,7 run_cluster.slurm pwc final
+sbatch --array=1,3,5,6,7 run_cluster.slurm pwc test "CAffNet-FF"
+```
+
+Multiple methods can be submitted in the same array job:
+
+```bash
+sbatch --array=1,3,5,6,7 run_cluster.slurm pwc test NN HardNet "CAffNet-FF" CAffNet-TF
 ```
 
 `run_cluster.slurm` maps each array task ID to the experiment seed, mounts the
 repository at `/workspace`, and calls `run.sh` inside `env.sif`. Update the
 `#SBATCH` partition, GPU type, memory, time limit, and array range for the target
-cluster. Also make sure `run.sh` contains the correct method list for the selected
-scenario.
+cluster. Methods run sequentially within each array job, so the time limit must
+cover their combined runtime. The job exits with a usage error when no method is
+provided.
 
 ## Extending The Code
 

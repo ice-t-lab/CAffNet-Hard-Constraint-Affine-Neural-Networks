@@ -11,20 +11,35 @@
 
 set -euo pipefail
 
-SCENARIO="${1:-pwc}"
-DIR_NAME="${2:-${SCENARIO}_${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-test}}}"
+if [[ $# -lt 3 ]]; then
+  echo "Usage: sbatch [options] $0 <scenario> <dir_name> <method> [method ...]" >&2
+  exit 2
+fi
+
+SCENARIO=$1
+DIR_NAME=$2
+METHODS=("${@:3}")
+
+for method in "${METHODS[@]}"; do
+  if [[ -z "$method" ]]; then
+    echo "Method names cannot be empty." >&2
+    exit 2
+  fi
+done
 
 SEED="${SLURM_ARRAY_TASK_ID:-1}"
 
 # Make sure logs/ exists for %x %A %a output paths
 mkdir -p logs
 
-echo "[INFO] SCENARIO=$SCENARIO  DIR_NAME=$DIR_NAME  SEED=$SEED"
+echo "[INFO] SCENARIO=$SCENARIO  DIR_NAME=$DIR_NAME  SEED=$SEED  METHODS=${METHODS[*]}"
 echo "[INFO] PWD=$(pwd)"
 
 # Run inside container; bind current project directory
+run_args=("$SCENARIO" "$DIR_NAME" "$SEED" "${METHODS[@]}")
+
 apptainer exec --nv \
   --bind "$(pwd):/workspace" \
   --pwd /workspace \
   env.sif \
-  bash -lc "./run.sh \"$SCENARIO\" \"$DIR_NAME\" \"$SEED\""
+  ./run.sh "${run_args[@]}"
