@@ -6,13 +6,15 @@ import torch
 from box import Box
 
 from src.base.constraint import BaseConstraint
+from src.base.system import BaseSystem
 
 
 class Constraint(BaseConstraint):
     """Affine constraints for the piecewise-constraint scenario."""
 
-    def __init__(self, cfg: Box) -> None:
+    def __init__(self, cfg: Box, system: BaseSystem) -> None:
         super().__init__(cfg)
+        self.system = system
         self.n_constraints = 2
 
     def lower_bound(self, x: torch.Tensor) -> torch.Tensor:

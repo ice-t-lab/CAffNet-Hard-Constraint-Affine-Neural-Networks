@@ -132,7 +132,7 @@ class Simulation(BaseSimulation):
             )
             constraint_violation_loss = (
                 constraint_violation_loss
-                + self.system.get_constraint_violation_loss(x_k, u_k)
+                + self.constraint.violation_loss(x_k, u_k)
             )
 
             if store:
@@ -160,7 +160,7 @@ class Simulation(BaseSimulation):
     def metrics(self, rollout: dict[str, torch.Tensor | float]) -> Metrics:
         x = rollout["x"]
         u = rollout["u"]
-        ineq_err = self.system.get_ineq_err(x[:-1], u)
+        ineq_err = self.constraint.ineq_err(x[:-1], u)
         n_steps = u.shape[0]
         n_ineq = ineq_err.shape[1]
         return {

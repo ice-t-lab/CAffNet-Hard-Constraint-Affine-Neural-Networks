@@ -108,44 +108,6 @@ class System(BaseSystem):
         x = np.random.uniform(low, high, size=(n_samples, self.x_dim, 1))
         return torch.tensor(x, device=DEVICE, dtype=torch.get_default_dtype())
 
-    def A(self, x: torch.Tensor) -> torch.Tensor:
-        """Return CAffNet/soft-penalty constraints ``A y <= b``."""
-        n_samples = x.shape[0]
-        G = self.G_tensor(x)
-        C = self.C_tensor(x)
-        A_single = torch.cat([G, C, -C], dim=0)
-        return A_single.unsqueeze(0).expand(n_samples, -1, -1)
-
-    def b(self, x: torch.Tensor) -> torch.Tensor:
-        """Return CAffNet/soft-penalty bounds ``b``."""
-        n_samples = x.shape[0]
-        h = self.h_tensor(x).unsqueeze(0).expand(n_samples, -1, -1)
-        return torch.cat([h, x, -x], dim=1)
-
-    def get_lower_bound(self, x: torch.Tensor) -> torch.Tensor:
-        large_num = 1e10
-        bl_ineq = torch.zeros(
-            x.shape[0],
-            self.num_ineq,
-            1,
-            device=x.device,
-            dtype=x.dtype,
-        ) - large_num
-        return torch.cat([bl_ineq, x], dim=1)
-
-    def get_upper_bound(self, x: torch.Tensor) -> torch.Tensor:
-        h = self.h_tensor(x).unsqueeze(0).expand(x.shape[0], -1, -1)
-        return torch.cat([h, x], dim=1)
-
-    def get_coefficients(
-        self,
-        x: torch.Tensor,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        n_samples = x.shape[0]
-        A_single = torch.cat([self.G_tensor(x), self.C_tensor(x)], dim=0)
-        A = A_single.unsqueeze(0).expand(n_samples, -1, -1)
-        return A, self.get_lower_bound(x), self.get_upper_bound(x)
-
     def get_main_loss(
         self,
         y: torch.Tensor | None,
@@ -157,26 +119,6 @@ class System(BaseSystem):
         y_pred_T = y_pred.transpose(1, 2)
         loss = 0.5 * (y_pred_T @ Q @ y_pred) + (p.transpose(1, 2) @ torch.sin(y_pred))
         return loss.sum()
-
-    def get_constraint_violation_loss(
-        self,
-        x: torch.Tensor,
-        y_pred: torch.Tensor,
-    ) -> torch.Tensor:
-        residual = self.A(x) @ y_pred - self.b(x)
-        violation = torch.clamp(residual, min=0.0)
-        return (torch.norm(violation.squeeze(-1), dim=1) ** 2).sum()
-
-    def get_ineq_err(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        n_samples = y.shape[0]
-        G = self.G_tensor(y).unsqueeze(0).expand(n_samples, -1, -1)
-        h = self.h_tensor(y).unsqueeze(0).expand(n_samples, -1, -1)
-        return torch.clamp(G @ y - h, min=1e-6)
-
-    def get_eq_err(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        n_samples = y.shape[0]
-        C = self.C_tensor(y).unsqueeze(0).expand(n_samples, -1, -1)
-        return torch.abs(C @ y - x)
 
     def Q_tensor(self, like: torch.Tensor) -> torch.Tensor:
         return torch.tensor(self.Q, device=like.device, dtype=like.dtype)

@@ -27,9 +27,7 @@ class Main(BaseMain):
         return System(self.cfg)
 
     def build_constraint(self) -> Constraint:
-        constraint = Constraint(self.cfg)
-        self.system.constraint = constraint
-        return constraint
+        return Constraint(self.cfg, self.system)
 
     def build_visualization(self) -> Visualization:
         return Visualization(self.cfg, self.system, self.constraint)
@@ -50,8 +48,7 @@ def main(
     seed: int | None = None,
 ) -> None:
     cfg = Main.load_cfg(Path(__file__).with_name("cfg.yaml"), dir_name, seed)
-    methods = None if method == "all" else [method]
-    Main(cfg, methods=methods).run()
+    Main(cfg, methods=[method]).run()
 
 
 if __name__ == "__main__":

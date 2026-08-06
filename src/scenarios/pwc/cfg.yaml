@@ -51,20 +51,24 @@ simulation:
 
 visualization:
   problem:
-    figsize: [5, 3]
+    figsize: [6, 4]
     dpi: 300
     xlim: [-2, 2]
-    ylim: [-3.5, 4.5]
+    ylim: [-6, 5]
     xlabel: x
     ylabel: y
     grid: false
-    label_fontsize: 16
-    tick_fontsize: 14
-    legend_fontsize: 12
+    label_fontsize: 10
+    tick_fontsize: 10
+    legend_fontsize: 10
   result:
     linewidth: 2
     alpha: 0.8
-    legend_fontsize: 12
+    legend_loc: upper center
+    legend_bbox_to_anchor: [0.5, 0.25]
+    legend_ncol: 3
+    legend_frameon: true
+    legend_fontsize: 10
     method_styles:
       NN:
         color: red
@@ -87,33 +91,37 @@ visualization:
         linewidth: 2
         label: CAffNet-TF
   loss_history:
-    figsize: [4, 3]
+    figsize: [8, 4]
     dpi: 300
-    first_n_epochs: 3000
-    ylim: [0, 120]
-    label_fontsize: 16
-    tick_fontsize: 14
+    first_n_epochs: 4000
+    terms: [main_loss]
+    use_epoch: false
+    xlabel: Epoch
+    ylabel: Total Loss
+    grid: false
+    label_fontsize: 10
+    tick_fontsize: 10
     legend_fontsize: 12
-    linewidth: 2
-    alpha: 0.8
+    linewidth: 3
+    alpha: 0.75
     method_styles:
       NN:
-        color: red
-        linestyle: "-"
-        linewidth: 2
+        color: "#000000"
+        linestyle: ":"
+        linewidth: 3
         label: NN
       HardNet:
-        color: orange
-        linestyle: "-"
-        linewidth: 2
+        color: "#0072B2"
+        linestyle: "-."
+        linewidth: 3
         label: HardNet
       CAffNet_FF:
-        color: blue
-        linestyle: "-"
-        linewidth: 2
+        color: "#0400E6"
+        linestyle: "--"
+        linewidth: 3
         label: CAffNet-FF
       CAffNet_TF:
-        color: green
+        color: "#EBD000"
         linestyle: "-"
-        linewidth: 2
+        linewidth: 3
         label: CAffNet-TF

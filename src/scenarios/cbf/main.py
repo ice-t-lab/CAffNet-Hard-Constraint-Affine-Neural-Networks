@@ -23,16 +23,14 @@ torch.set_default_dtype(torch.float64)
 class Main(BaseMain):
     """CBF experiment runner."""
 
-    default_methods = ["NN", "HardNet", "CAffNet-FF"]
-
     def build_system(self) -> System:
         return System(self.cfg)
 
     def build_constraint(self) -> Constraint:
-        return Constraint(self.cfg, self.system)
+        return self.system.constraint
 
     def build_visualization(self) -> Visualization:
-        return Visualization(self.cfg, self.system)
+        return Visualization(self.cfg, self.system, self.constraint)
 
     def build_simulation(self, net: torch.nn.Module) -> BaseSimulation:
         return Simulation(
@@ -43,11 +41,10 @@ class Main(BaseMain):
             device=self.device,
         )
 
-    def save_results(self, methods: list[str]) -> None:
-        super().save_results(methods)
+    def save_results(self) -> None:
+        super().save_results()
         if self.cfg.simulation.save.figures and self.cfg.simulation.save.controls:
-            result_methods = self.saved_methods(methods, self.result.result_methods())
-            self.plot_controls(result_methods)
+            self.plot_controls(self.result.result_methods())
 
     def plot_controls(self, methods: list[str]) -> None:
         method_data = {
@@ -64,8 +61,7 @@ def main(
     seed: int | None = None,
 ) -> None:
     cfg = Main.load_cfg(Path(__file__).with_name("cfg.yaml"), dir_name, seed)
-    methods = None if method == "all" else [method]
-    Main(cfg, methods=methods).run()
+    Main(cfg, methods=[method]).run()
 
 
 if __name__ == "__main__":

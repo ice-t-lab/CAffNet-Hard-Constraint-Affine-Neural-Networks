@@ -29,16 +29,14 @@ from .visualization import BaseVisualization
 class BaseMain(ABC):
     """Shared train, evaluate, save, and result workflow."""
 
-    default_methods = ["NN", "HardNet", "CAffNet-FF", "CAffNet-TF"]
-
     def __init__(
         self,
         cfg: Box,
-        methods: list[str] | None = None,
+        methods: list[str],
         device: str | torch.device | None = None,
     ) -> None:
         self.cfg = cfg
-        self.methods = methods or self.default_methods
+        self.methods = methods
         self.device = torch.device(
             device or ("cuda" if torch.cuda.is_available() else "cpu")
         )
@@ -49,16 +47,16 @@ class BaseMain(ABC):
         self.visualization: BaseVisualization | None = None
         self.result: BaseResult | None = None
 
-    def run(self, methods: list[str] | None = None) -> BaseResult:
+    def run(self) -> BaseResult:
         """Run methods and build saved result artifacts."""
         self.seed_everything()
         self.setup_logging()
         self.log_hardware_info()
         self.logger.info("Using device: %s", self.device)
         self.setup()
-        run_methods = methods or self.methods
-        completed_methods = [self.run_method(method) for method in run_methods]
-        self.save_results(completed_methods)
+        for method in self.methods:
+            self.run_method(method)
+        self.save_results()
         return self.result
 
     def setup(self) -> None:
@@ -95,7 +93,10 @@ class BaseMain(ABC):
             self.save_optimizer(method, simulation)
 
         metrics, result_data = self.evaluate(simulation)
+        test_time = metrics.pop("Test Time (s)", None)
         metrics["Train Time (s)"] = train_time / self.cfg.simulation.training.n_epochs
+        if test_time is not None:
+            metrics["Test Time (s)"] = test_time
 
         self.result.save(
             method=method,
@@ -116,23 +117,20 @@ class BaseMain(ABC):
         """Evaluate once and return saved metrics plus plotting data."""
         return simulation.evaluate()
 
-    def save_results(self, methods: list[str]) -> None:
-        """Build combined result outputs from saved method data."""
+    def save_results(self) -> None:
+        """Build combined outputs from all saved method directories."""
         if self.cfg.simulation.save.metrics:
-            metric_methods = self.saved_methods(methods, self.result.metric_methods())
-            self.result.table(metric_methods)
-            self.result.latex_table(metric_methods)
+            self.result.table()
+            self.result.latex_table()
 
         if self.cfg.simulation.save.figures and "result" in self.cfg.visualization:
-            result_methods = self.saved_methods(methods, self.result.result_methods())
-            self.result.plot_results(result_methods)
+            self.result.plot_results()
         if (
             self.cfg.simulation.save.figures
             and self.cfg.simulation.save.loss_history
             and "loss_history" in self.cfg.visualization
         ):
-            loss_methods = self.saved_methods(methods, self.result.loss_methods())
-            self.result.plot_loss(loss_methods)
+            self.result.plot_loss()
 
     def save_common_data(self) -> None:
         """Save data shared by all methods."""
@@ -152,13 +150,13 @@ class BaseMain(ABC):
         if method == "NN":
             return NN(self.cfg)
         if method == "HardNet":
-            return HardNet(self.cfg, self.require_constraint(method))
+            return HardNet(self.cfg, self.constraint)
         if method == "CAffNet-FF":
-            return CAffNetFF(self.cfg, self.require_constraint(method))
+            return CAffNetFF(self.cfg, self.constraint)
         if method == "CAffNet-FF (Lite)":
-            return CAffNetFFLite(self.cfg, self.require_constraint(method))
+            return CAffNetFFLite(self.cfg, self.constraint)
         if method == "CAffNet-TF":
-            return CAffNetTF(self.cfg, self.require_constraint(method))
+            return CAffNetTF(self.cfg, self.constraint)
         raise ValueError(f"Unknown method: {method}")
 
     @abstractmethod
@@ -166,9 +164,10 @@ class BaseMain(ABC):
         """Build the scenario system."""
         raise NotImplementedError
 
-    def build_constraint(self) -> BaseConstraint | None:
-        """Build scenario constraints when a method needs them."""
-        return None
+    @abstractmethod
+    def build_constraint(self) -> BaseConstraint:
+        """Build the scenario constraint."""
+        raise NotImplementedError
 
     def build_visualization(self) -> BaseVisualization:
         """Build scenario visualization."""
@@ -209,28 +208,6 @@ class BaseMain(ABC):
 
     def optimizer_path(self, method: str) -> Path:
         return self.result.method_dir(method) / "optimizer.pt"
-
-    def require_constraint(self, method: str) -> BaseConstraint:
-        if self.constraint is None:
-            raise ValueError(f"{method} requires a constraint.")
-        return self.constraint
-
-    def saved_methods(
-        self,
-        completed_methods: list[str],
-        existing_methods: list[str],
-    ) -> list[str]:
-        """Return result methods, including prior single-method runs."""
-        if len(completed_methods) != 1:
-            return completed_methods
-
-        available = set(existing_methods)
-        if not available:
-            return completed_methods
-
-        ordered = [method for method in self.default_methods if method in available]
-        ordered.extend(sorted(available.difference(ordered)))
-        return ordered
 
     @staticmethod
     def num_params(net: nn.Module) -> str:

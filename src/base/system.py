@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
 
 import torch
 from box import Box
 
-if TYPE_CHECKING:
-    from .constraint import BaseConstraint
+from .constraint import BaseConstraint
 
 
 class BaseSystem(ABC):
